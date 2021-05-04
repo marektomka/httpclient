@@ -11,7 +11,7 @@ def header_check(header):   # kontrola hlavicky
 
     for h in header:
         if h=="" or header[h]=="":
-            status_code,status_message(200,' Bad request')
+            status_code,status_message(200,'Bad request')
             return(status_code,status_message)
     return(status_code,status_message)
 
@@ -51,18 +51,18 @@ def method_write(headers,inpFile):
     try:
         content = inpFile.read(int(headers["Content-length"]))
         name = hashlib.md5()
-        name.update(newHeader.encode('utf-8'))
-        name.hexdigest()
+        name.update(content.encode('utf-8'))
+        fname = name.hexdigest()
 
-        with open(f'{headers["Mailbox"]}/{name}',"w") as message:
+        with open(f'{headers["Mailbox"]}/{fname}','w') as message:
             message.write(content)
 
     except ValueError:
-        status_code,status_message=(200,' Bad request')
+        status_code,status_message=(200,'Bad request')
     except FileNotFoundError:
-        status_code,status_message=(203,' No such mailbox')
+        status_code,status_message=(203,'No such mailbox')
     except KeyError:
-        status_code,status_message=(200,' Bad request')
+        status_code,status_message=(200,'Bad request')
 
     return(status_code,status_message,newHeader,reply)
 
@@ -71,37 +71,41 @@ def method_ls(headers):
     status_message="OK"
     newHeader=""
     reply=""
+    files=""
 
     try:
        files = os.listdir(headers["Mailbox"])
-       newHeader = (f'Number-of-messages: {len(files)}\n')
-       reply = "\n".join(files)+"\n"
-    
+       
+       newHeader = (f'Number-of-messages: {len(files)}') + '\n'
+       files = reversed(files) # snad je to sparvny postup, ako  vyriesit, ze mi to vypisovalo opacne
+       reply = "\n".join(files) + '\n'
+       
     
     except FileNotFoundError:
-        status_code,status_message=(203,' No such mailbox')
+        status_code,status_message=(203,'No such mailbox')
     except KeyError:
-        status_code,status_message=(200,' Bad request')
+        status_code,status_message=(200,'Bad request')
 
     return(status_code,status_message,newHeader,reply)
 
 def method_read(headers):
     status_code=100
-    satus_message="OK"
+    status_message="OK"
     newHeader=""
     reply=""
-    
+    message=""
+
     try:
-        with open(f'{headers["Mailbox"]}/{}','r') as message: # tu neviem co dat za / 
+        with open(f'{headers["Mailbox"]}/{headers["Message"]}','r') as message:  
             reply = message.read()
-            newHeader = (f'Content-length:{len(reply)}')
+            newHeader = (f'Content-length:{len(reply)}\n')
         
     except KeyError:
-        status_code,status_message=(200,' Bad request')
+        status_code,status_message=(200,'Bad request')
     except FileNotFoundError:
-        status_code,status_message=(201,' No such message')
+        status_code,status_message=(201,'No such message')
     except OSError:
-        status_code,status_message=(202,' Read error')
+        status_code,status_message=(202,'Read error')
 
     return(status_code,status_message,newHeader,reply)
 
@@ -113,22 +117,25 @@ signal.signal(signal.SIGCHLD,signal.SIG_IGN)
 s.listen(5)
 
 while True:
+    reply=""
+    newHeader=""
+    headers={}
+    header=""
+    headIdentif=""
+    headValue=""
+    method=""
+    data=""
+    
     connected_socket,address=s.accept()
     print(f'spojenie z {address}')
+              
     pid_chld=os.fork()
     if pid_chld==0:
         s.close()
         f=connected_socket.makefile(mode='rw',encoding='utf-8')
         
         while True:
-            method =f.readline().strip()
-            reply=""
-            newHeader=""
-            headers={}
-            header=""
-            headIdentif=""
-            headValue=""
-
+            method=f.readline().strip()
             if not method:
                 break
             
@@ -150,18 +157,21 @@ while True:
             elif method=='LS': 
                  status_code,status_message,newHeader,reply = method_ls(headers)
             else:
-                status_code,status_message=(204,' Unknown method')
+                status_code,status_message=(204,'Unknown method')
+
+                f.write(f'{status_code} {status_message}\n')
                 f.write('\n')                        
                 f.flush()
+                print(f'{adress} uzavrel spojenie')
                 sys.exit(0)
                     
-            f.write(f'{status_code} {status_message}\n')
-            f.write(reply)
-            f.write('\n')
-            f.write(newHeader)
+            f.write(f'{status_code} {status_message}\n{newHeader}\n{reply}')
             f.flush()
-            print(f'{address} uzavrel spojenie')
-            sys.exit(0)
+
+        
+        f.write(f'{adress} uzavrel spojenie')
+        sys.exit(0)
+
     else:
         connected_socket.close()
 
