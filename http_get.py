@@ -53,7 +53,7 @@ while True:
         line=f.readline().decode('ASCII')
         
     if (status_code == '301' or status_code == '302' or status_code == '303' or status_code == '307' or status_code == '308'):
-        URL=headers['location']
+        URL=headers['location'].strip()
         f.close()
         s.close()
     elif (status_code=="200"):
@@ -76,11 +76,9 @@ if status_code=="200":
             length=int(le,16)
             content=f.read(length)
             sys.stdout.buffer.write(content)
-            if lenght==0:
+            if length==0:
                 break
             f.readline()
-else:
-    print('Chybne URL')
 
 f.flush()
 f.close()
