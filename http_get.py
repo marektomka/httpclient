@@ -65,22 +65,20 @@ while True:
         break
 #obsah
 if status_code=="200":
-    for h in headers:
-        if h=="content-length":
-            length=int(headers["content-length"])
-            content=f.read(length).decode('ASCII')
-            sys.stdout.buffer.write(content)
-            break
+    if "content-length" in headers.keys():
+        length=int(headers["content-length"])
+        content=f.read(length)
+        sys.stdout.buffer.write(content)
                 
-        elif h=="transfer-encoding":
-            while True:
-                le=f.readline().decode('ASCII')
-                length=int(le,16)
-                content=f.read(length)
-                sys.stdout.buffer.write(content)
-                if lenght==0:
-                    break
-                f.readline()
+    elif "transfer-encoding" in headers.keys():
+        while True:
+            le=f.readline().decode('ASCII')
+            length=int(le,16)
+            content=f.read(length)
+            sys.stdout.buffer.write(content)
+            if lenght==0:
+                break
+            f.readline()
 else:
     print('Chybne URL')
 
